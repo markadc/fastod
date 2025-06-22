@@ -1,0 +1,1 @@
+from fastod.core import *
