@@ -6,7 +6,7 @@
 
 # 如何安装？
 
-- `pip install sqlman`
+- `pip install fastdb`
 
 # 拿什么吸引你？
 
