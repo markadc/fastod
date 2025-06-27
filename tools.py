@@ -51,6 +51,9 @@ def make_where(data: dict):
             _in, args1 = make_in(v)
             part = "`{}` in {}".format(k, _in)
             args += args1
+        elif isinstance(v, bool):
+            mid = 'is not' if v else 'is'
+            part = f"`{k}` {mid} null"
         else:
             part = "`{}`=%s".format(k)
             args.append(v)
@@ -59,8 +62,9 @@ def make_where(data: dict):
     return _where, args
 
 
-# data = dict(name="CLOS", age=[18, 22, 35, 60], vip=1)
+# data = dict(name="CLOS", age=[18, 22, 35, 60], is_vip=True, is_expired=False)
 # print("make_where\n{}\n{}\n".format(data, make_where(data)))
+
 
 def make_tail(_where: str, _limit: int = None):
     where = "where {}".format(_where) if _where else ''

@@ -15,7 +15,7 @@ print(len(lines))
 for line in lines:
     print(line)
 
-lines = test.query(pick="id, name, age", age=[22, 23], limit=5)
+lines = test.query(pick="id, name, age", age=[20, 60], limit=5)
 print(len(lines))
 for line in lines:
     print(line)
