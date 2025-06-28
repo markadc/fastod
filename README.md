@@ -8,6 +8,8 @@
 
 - 2025/06/27
     - kwargs中解析的`True`值为`is not null`，`False`值为`is null`
+- 2025/06/28
+    - SQLResponse统一存在三个属性
 
 # 如何安装？
 

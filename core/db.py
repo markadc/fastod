@@ -12,30 +12,19 @@ from fastod.tools import getfv
 class SQLResponse:
     def __init__(self, cursor: Cursor | DictCursor = None, mode: bool = None, e: Exception = None):
         if e:
-            self.status = 0
+            self.affect = None
+            self.result = None
             self.error = str(e)
             return
-
         assert cursor, "Cursor is None"
-        self.error = None
-        if mode is None:
-            result = None
-        else:
-            result = cursor.fetchall() if mode else cursor.fetchone()
-        self.status = 1
         self.affect = cursor.rowcount
-        self.result = result
+        self.result = None if mode is None else cursor.fetchall() if mode else cursor.fetchone()
+        self.error = None
 
     def __str__(self):
-        same = self.__class__.__name__, self.status
-        # 执行出现错误
-        if self.error:
-            return "{}(status={}, error={})".format(*same, self.error)
-        # 执行无结果集
-        if not self.result:
-            return "{}(status={}, affect={})".format(*same, self.affect)
-        # 执行有结果集
-        return "{}(status={}, affect={}, result={})".format(*same, self.affect, self.result)
+        args = self.__class__.__name__, self.affect, self.result, self.error
+        show = "{}(\n\taffect={}\n\tresult={}\n\terror={}\n)".format(*args)
+        return show
 
 
 class MySQL:
