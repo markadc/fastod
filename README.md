@@ -17,32 +17,27 @@
 
 # 拿什么吸引你？
 
-- 使用方式简单暴力
+`使用方式简单暴力，不用写SQL就能进行增删改查`
 
-- 不用写SQL就能进行增删改查
+## 连接方式
 
-### 连接方式如此简易
-
-- 一个字典参数即可
+`支持传统连接、URL连接`
 
 ### 插入数据如此贴心
 
 - 自动推导
-    - 传入dict是插入一条数据，传入list是插入多条数据
+    - `传入dict是插入一条数据，传入list是插入多条数据`
 
 - 多种插入模式
-    - 模式1，插入时，数据冲突则报错
-    - 模式2，插入时，数据冲突则忽略
-    - 模式3，插入时，数据发生冲突，把数据进行更新操作
-    - 模式4，插入时，自动过滤掉冲突的数据，只插入不冲突的数据
-
-### 等...
+    - `模式1，插入时，数据冲突则报错`
+    - `模式2，插入时，数据冲突则忽略`
+    - `模式3，插入时，数据发生冲突，把数据进行更新操作`
 
 # 操练起来
 
-### 连接mysql
+### 连接MySQL
 
-- 数据库对象
+`数据库对象`
 
 ```python
 from fastod import MySQL
@@ -50,7 +45,7 @@ from fastod import MySQL
 # 方式1
 db = MySQL(host="localhost", port=3306, username="root", password="root@0", db="test")  # 数据库对象
 
-# 方式2
+# 方式1
 MYSQL_CONF = {
     'host': 'localhost',
     'port': 3306,
@@ -60,19 +55,19 @@ MYSQL_CONF = {
 }
 db = MySQL(**MYSQL_CONF)  # 数据库对象
 
-# 方式3
+# 方式2
 MYSQL_URL = "mysql://root:123456@localhost:3306/test"
 db = MySQL.from_url(MYSQL_URL)  # 数据库对象
 ```
 
-- 表格对象
+`表格对象`
 
 ```python
 student = db['student']
 student = db.pick_table('student')
 ```
 
-### 准备测试数据
+### 首先准备测试数据
 
 ```python
 # 一条龙服务，创建people表并插入测试数据，每次插入一千条，累计插入一万条
@@ -82,7 +77,7 @@ people = db['people']
 
 ### 插入数据
 
-#### 单条插入
+`单条插入`
 
 ```python
 data = {'id': 10001, 'name': '小明', 'age': 10, 'gender': '男'}
@@ -90,12 +85,12 @@ data = {'id': 10001, 'name': '小明', 'age': 10, 'gender': '男'}
 # 插入一条数据
 people.insert_data(data)
 
-# 当插入的数据与表中的数据存在冲突时，直接插入会报错，如果补充<unique>参数，则不报错
+# 当插入的数据与表中的数据存在冲突时（唯一索引值），直接调用会报错，如果补充<unique>参数，则不报错
 people.insert_data(data, unique='id')
 
 ```
 
-#### 批量插入
+`批量插入`
 
 ```python
 data = [
@@ -108,7 +103,7 @@ data = [
 people.insert_data(data)
 ```
 
-#### 插入数据时，如果数据冲突则进行更新
+`插入数据时，如果数据冲突则进行更新`
 
 ```python
 data = {'id': 10001, 'name': '小明', 'age': 10, 'gender': '男'}
