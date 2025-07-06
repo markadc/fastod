@@ -49,18 +49,35 @@ class SQL:
     def parse_conds(conds: dict) -> list[str]:
         result = []
         for key, value in conds.items():
-            if isinstance(value, bool):
+            if value is None:
+                result.append(f"{key} IS NULL")
+            elif isinstance(value, bool):
                 tail = "IS NOT NULL" if value is True else "IS NULL"
                 result.append(f"{key} {tail}")
             elif isinstance(value, list):
                 some = ", ".join([repr(v) for v in value])
                 result.append(f"{key} IN ({some})")
             else:
-                val = "null" if value is None else repr(value)
-                result.append(f"{key} = {val}")
+                result.append(f"{key} = {repr(value)}")
         return result
 
     def where(self, kv: dict = None, **conds):
+        """
+        构建where部分
+
+        1. 布尔值查询
+            where(f1=True, f2=False)\n
+            "...WHERE f1 NOT IS NULL and f2 IS NULL"
+        2. IN查询
+            where(id=[1, 2 ,3])\n
+            "...WHERE id IN (1, 2 ,3)"
+        3. 常规等值查询
+            where(name="Wauo", age=None)\n
+            "...WHERE name = 'Wauo' and age IS NULL"
+        Args:
+            kv: 传入了则覆盖conds
+            **conds: 条件
+        """
         conds = kv if kv else conds
         self._where_conds = self.parse_conds(conds)
         return self
