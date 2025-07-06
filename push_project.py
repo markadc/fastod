@@ -1,7 +1,7 @@
 import os
 import sys
 
-msg = sys.argv[1] if len(sys.argv) == 2 else "更新readme"
+msg = sys.argv[1] if len(sys.argv) == 2 else "一些优化；新增SQL对象"
 
 cmd1 = "git add ."
 cmd2 = 'git commit -m "{}"'.format(msg)

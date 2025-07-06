@@ -9,28 +9,83 @@ from pymysql.cursors import DictCursor, Cursor
 from fastod.tools import getfv
 
 
-class SQLResponse:
+class Response:
+    """执行SQL的响应"""
+
     def __init__(self, cursor: Cursor | DictCursor = None, mode: bool = None, e: Exception = None):
         if e:
             self.affect = None
             self.result = None
             self.error = str(e)
+            self.ok = False
             return
         assert cursor, "Cursor is None"
         self.affect = cursor.rowcount
         self.result = None if mode is None else cursor.fetchall() if mode else cursor.fetchone()
         self.error = None
+        self.ok = True
 
     def __str__(self):
-        args = self.__class__.__name__, self.affect, self.result, self.error
-        show = "{}(\n\taffect={}\n\tresult={}\n\terror={}\n)".format(*args)
+        args = self.__class__.__name__, self.ok, self.affect, self.result, self.error
+        show = "{}(\n\tok={}\n\taffect={}\n\tresult={}\n\terror={}\n)".format(*args)
         return show
+
+
+class SQL:
+    """快速生成SQL语句"""
+
+    def __init__(self, table_name: str):
+        self.table_name = table_name
+        self._select = None
+        self._where_conds = []
+        self._limit = None
+        self._sql = ''
+
+    def select(self, fileds="*"):
+        self._select = fileds
+        return self
+
+    @staticmethod
+    def parse_conds(conds: dict) -> list[str]:
+        result = []
+        for key, value in conds.items():
+            if isinstance(value, bool):
+                tail = "IS NOT NULL" if value is True else "IS NULL"
+                result.append(f"{key} {tail}")
+            elif isinstance(value, list):
+                some = ", ".join([repr(v) for v in value])
+                result.append(f"{key} IN ({some})")
+            else:
+                val = "null" if value is None else repr(value)
+                result.append(f"{key} = {val}")
+        return result
+
+    def where(self, kv: dict = None, **conds):
+        conds = kv if kv else conds
+        self._where_conds = self.parse_conds(conds)
+        return self
+
+    def limit(self, n=1):
+        self._limit = n
+        return self
+
+    def build(self) -> str:
+        """返回具体的SQL语句"""
+        _select = self._select if self._select is not None else "*"
+        _where = ''
+        if self._where_conds:
+            _where = " WHERE " + " AND ".join(self._where_conds)
+        _limit = ''
+        if self._limit:
+            _limit = f" LIMIT {self._limit}"
+        self._sql = f"SELECT {_select} FROM {self.table_name}{_where}{_limit}"
+        return self._sql
 
 
 class MySQL:
     def __init__(self, host=None, port=None, username=None, password=None, db=None, **kwargs):
         """
-        连接MySQL
+        连接MySQL数据库
 
         Args:
             host: 地址
@@ -58,7 +113,10 @@ class MySQL:
 
     @classmethod
     def from_url(cls, url: str):
-        """连接MySQL，地址格式为：mysql://username:password@host:port/db"""
+        """
+        连接MySQL\n
+        地址格式为：mysql://username:password@host:port/db
+        """
         result = urlparse(url)
         return cls(
             host=result.hostname,
@@ -69,7 +127,7 @@ class MySQL:
         )
 
     def __getitem__(self, name: str):
-        assert name in self.get_tables(), f"table <{name}> is not exists"
+        assert name in self.get_table_names(), f"table <{name}> is not exists"
         from fastod.core.table import Table
         return Table(name, self._pool, self._cfg)
 
@@ -101,7 +159,7 @@ class MySQL:
         if con:
             con.close()
 
-    def exe_sql(self, sql: str, args=None, query_all=None, to_dict=True, allow_failed=True) -> SQLResponse:
+    def exe_sql(self, sql: str, args=None, query_all=None, to_dict=True, allow_failed=True) -> Response:
         """执行SQL"""
         cur, con = None, None
         try:
@@ -110,12 +168,12 @@ class MySQL:
             args = args or None
             cur.execute(sql.strip(), args=args)
             con.commit()
-            return SQLResponse(cursor=cur, mode=query_all)
+            return Response(cursor=cur, mode=query_all)
         except Exception as e:
             if allow_failed is False:
                 raise e
             self.panic(sql, e)
-            return SQLResponse(e=e)
+            return Response(e=e)
         finally:
             self.close_connect(cur, con)
 
@@ -142,8 +200,8 @@ class MySQL:
         Args:
             table: 表
             item: 数据
-            update: 数据重复，则更新数据
-            unique: 唯一索引
+            update: 唯一索引重复时，则触发 ON DUPLICATE KEY UPDATE <update>
+            unique: 唯一索引的字段
 
         Returns:
             已添加的行数
@@ -154,8 +212,8 @@ class MySQL:
         )
         sql = 'insert into {}({}) value({}) {}'.format(table, fields, values, new)
         args = tuple(item.values())
-        affect = self.exe_sql(sql, args=args).affect
-        return affect
+        r = self.exe_sql(sql, args=args)
+        return r.affect
 
     def _add_many(self, table: str, items: list, update: str = None, unique: str = None) -> int:
         """
@@ -163,8 +221,8 @@ class MySQL:
 
         Args:
             table: 表
-            items: 数据
-            update: 数据重复，则更新数据
+            items: 多条数据
+            update: 唯一索引重复时，则触发 ON DUPLICATE KEY UPDATE <update>
             unique: 唯一索引
 
         Returns:
@@ -179,17 +237,17 @@ class MySQL:
         affect = self.exem_sql(sql, args=args)
         return affect
 
-    def get_tables(self) -> list:
+    def get_table_names(self) -> list:
         """获取当前数据库的所有表名称"""
         sql = 'show tables'
-        data = self.exe_sql(sql, to_dict=False, query_all=True).result
-        tables = [v[0] for v in data]
-        return tables
+        r = self.exe_sql(sql, to_dict=False, query_all=True)
+        names = [v[0] for v in r.result]
+        return names
 
     def remove_table(self, name: str) -> bool:
         """删除表"""
         sql = 'DROP TABLE {}'.format(name)
-        return self.exe_sql(sql).status == 1
+        return self.exe_sql(sql).ok
 
     def gen_test_table(self, name: str, once=1000, total=10000):
         """生成测试表并补充数据，然后返回这个表格对象"""
@@ -219,7 +277,7 @@ class MySQL:
                 ) 
                 ENGINE=InnoDB    DEFAULT CHARSET=utf8mb4;
             '''.format(name)
-            return self.exe_sql(sql).status
+            return self.exe_sql(sql).ok
 
         def make_one():
             """制造一条数据"""
@@ -246,7 +304,7 @@ class MySQL:
             logger.success('MySQL，插入{}，累计{}'.format(line, n))
 
         if not create_table():
-            raise Exception("表格创建失败")
+            raise Exception("表创建失败，可能表已存在")
 
         if total < once:
             todb(name, total)

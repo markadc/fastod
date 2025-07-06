@@ -8,7 +8,7 @@ from fastod.tools import make_set, make_where, make_tail, check_items, print_lin
 
 
 class Table(MySQL):
-    """表格控制者"""
+    """表格对象"""
 
     def __init__(self, name: str, pool: PooledDB, cfg: dict):
         self.name = "`{}`".format(name)
@@ -19,71 +19,72 @@ class Table(MySQL):
         """删除这张表"""
         return self.remove_table(self.name)
 
-    def delete(self, limit: int = None, **kwargs) -> int:
+    def delete(self, limit: int = None, **conds) -> int:
         """
         删除数据（默认删除所有数据）\n
         注意：请限定条件进行删除
         """
         _sql = "delete from {} {}"
-        _where, _args = make_where(kwargs)
+        _where, _args = make_where(conds)
         tail = make_tail(_where, limit)
         sql = _sql.format(self.name, tail)
         affect = self.exe_sql(sql, args=_args).affect
         return affect
 
-    def update(self, new: dict, limit: int = None, **kwargs) -> int:
+    def update(self, new: dict, limit: int = None, **conds) -> int:
         """更新数据"""
         _sql = "update {} set {} {}"
         _set, args1 = make_set(new)
-        _where, args2 = make_where(kwargs)
+        _where, args2 = make_where(conds)
         tail = make_tail(_where, limit)
         args = args1 + args2
         sql = _sql.format(self.name, _set, tail)
         affect = self.exe_sql(sql, args=args).affect
         return affect
 
-    def query(self, pick='*', limit=100, **kwargs) -> list:
+    def query(self, pick='*', limit=100, **conds) -> list:
         """查询数据（默认100条）"""
         if pick != '*' and pick.find(',') != -1:
             pick = ', '.join(["`{}`".format(f.strip().strip('`')) for f in pick.split(',') if f.strip()])
         _sql = "select {} from {} {}"
-        _where, args = make_where(kwargs)
+        _where, args = make_where(conds)
         tail = make_tail(_where, limit)
         sql = _sql.format(pick, self.name, tail)
         data = self.exe_sql(sql, args=args, query_all=True).result
         return data
 
-    def query_count(self, **kwargs) -> int:
+    def query_count(self, **conds) -> int:
         """查询数量"""
         _sql = "select count(1) from {} {}"
-        _where, args = make_where(kwargs)
+        _where, args = make_where(conds)
         tail = make_tail(_where)
         sql = _sql.format(self.name, tail)
         count = self.exe_sql(sql, args=args, query_all=False).result["count(1)"]
         return count
 
-    def exists(self, **kwargs) -> bool:
+    def exists(self, **conds) -> bool:
         """检查数据是否存在"""
-        _where, args = make_where(kwargs)
+        _where, args = make_where(conds)
         sql = 'select 1 from {} where {} limit 1'.format(self.name, _where)
         return self.exe_sql(sql, args=args).affect == 1
 
-    def random(self, limit=1) -> dict | list:
+    def random(self, limit=1):
         """随机返回一条或多条数据"""
         sql = 'select * from {} where id >= (rand() * (select max(id) from {})) limit {}'.format(
             self.name,
             self.name,
             limit
         )
-        data = self.exe_sql(sql, query_all=limit).result
-        return data
+        r = self.exe_sql(sql, query_all=True)
+        result: list[dict] = r.result
+        return result[0] if len(result) == 1 else result
 
     def update_one(self, item: dict, depend: str) -> int:
         """
         更新
 
         Args:
-            item: 数据，且含有<depend>字段
+            item: 需要更新的数据，且含有<depend>字段
             depend: 条件判断的字段
 
         Returns:
@@ -98,15 +99,15 @@ class Table(MySQL):
         s = ', '.join(temp)
         args.append(dv)
         sql = 'update {} set {} where {}=%s'.format(self.name, s, depend)
-        affect = self.exe_sql(sql, args=args).affect
-        return affect
+        r = self.exe_sql(sql, args=args)
+        return r.affect
 
     def update_many(self, items: list, depend: str) -> int:
         """
         批量更新
 
         Args:
-            items: 多条数据，每条数据含有<depend>字段
+            items: 多条需要更新的数据，每条数据含有<depend>字段
             depend: 条件判断的字段
 
         Returns:
@@ -151,8 +152,8 @@ class Table(MySQL):
         tail = 'where {} in ({})'.format(depend, ', '.join(values))
 
         sql = '\n'.join([head, mid, tail])
-        affect = self.exe_sql(sql, args=args).affect
-        return affect
+        r = self.exe_sql(sql, args=args)
+        return r.affect
 
     def get_min(self, field: str):
         """获取字段的最小值"""

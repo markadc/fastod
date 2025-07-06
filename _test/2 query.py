@@ -19,8 +19,3 @@ lines = test.query(pick="id, name, age", age=[20, 60], limit=5)
 print(len(lines))
 for line in lines:
     print(line)
-
-print(test.exe_sql("select * from test limit 2", query_all=False))
-print(test.exe_sql("select * from test limit 2", query_all=True))
-print(test.exe_sql("update test set age=22 where age=18 limit 1"))
-print(test.exe_sql("update test set age=35 where age=18 limit 2"))
