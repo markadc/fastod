@@ -13,17 +13,24 @@ class Response:
     """执行SQL的响应"""
 
     def __init__(self, cursor: Cursor | DictCursor = None, mode: bool = None, e: Exception = None):
+        """
+
+        Args:
+            cursor: 默认游标或者字典游标
+            mode: 决定result的值，为True则调用fetchall、为False调用fetchone、为None则不调用
+            e: 执行SQL时触发的异常
+        """
         if e:
+            self.ok = False
             self.affect = None
             self.result = None
             self.error = str(e)
-            self.ok = False
             return
         assert cursor, "Cursor is None"
-        self.affect = cursor.rowcount
-        self.result = None if mode is None else cursor.fetchall() if mode else cursor.fetchone()
-        self.error = None
         self.ok = True
+        self.affect: int = cursor.rowcount
+        self.result: list | dict | tuple = None if mode is None else cursor.fetchall() if mode else cursor.fetchone()
+        self.error = None
 
     def __str__(self):
         args = self.__class__.__name__, self.ok, self.affect, self.result, self.error
