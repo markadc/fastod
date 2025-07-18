@@ -1,11 +1,11 @@
 from fastod import MySQL
 
 cfg = {
-    'host': 'localhost',
-    'port': 3306,
-    'user': 'root',
-    'password': 'root@0',
-    'db': 'test'
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "root@0",
+    "db": "test",
 }
 db = MySQL(**cfg)
 test = db["test"]

@@ -3,10 +3,10 @@ def getfv(data: dict | list) -> tuple:
     fs = []
     vs = []
     for k in item.keys():
-        fs.append('`{}`'.format(k))
-        vs.append('%s')
-    fileds = ', '.join(fs)
-    values = ', '.join(vs)
+        fs.append("`{}`".format(k))
+        vs.append("%s")
+    fileds = ", ".join(fs)
+    values = ", ".join(vs)
     return fileds, values
 
 
@@ -20,9 +20,9 @@ def make_set(data: dict):
     fs = []
     args = []
     for k, v in data.items():
-        fs.append('`{}`=%s'.format(k))
+        fs.append("`{}`=%s".format(k))
         args.append(v)
-    _set = ', '.join(fs)
+    _set = ", ".join(fs)
     return _set, args
 
 
@@ -43,7 +43,7 @@ def make_in(some: list):
 def make_where(data: dict):
     """WHERE ..."""
     if not data:
-        return '', []
+        return "", []
     conds = []
     args = []
     for k, v in data.items():
@@ -52,7 +52,7 @@ def make_where(data: dict):
             part = "`{}` in {}".format(k, _in)
             args += args1
         elif isinstance(v, bool):
-            mid = 'is not' if v else 'is'
+            mid = "is not" if v else "is"
             part = f"`{k}` {mid} null"
         else:
             part = "`{}`=%s".format(k)
@@ -67,15 +67,15 @@ def make_where(data: dict):
 
 
 def make_tail(_where: str, _limit: int = None):
-    where = "where {}".format(_where) if _where else ''
-    limit = "limit {}".format(_limit) if _limit else ''
+    where = "where {}".format(_where) if _where else ""
+    limit = "limit {}".format(_limit) if _limit else ""
     tail = "{} {}".format(where, limit).strip()
     return tail
 
 
 def red_print(s):
     """红色的打印"""
-    print('\033[31m{}\033[0m'.format(s))
+    print("\033[31m{}\033[0m".format(s))
 
 
 def print_lines(lines: list):

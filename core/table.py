@@ -42,10 +42,16 @@ class Table(MySQL):
         affect = self.exe_sql(sql, args=args).affect
         return affect
 
-    def query(self, pick='*', limit=100, **conds) -> list:
+    def query(self, pick="*", limit=100, **conds) -> list:
         """查询数据（默认100条）"""
-        if pick != '*' and pick.find(',') != -1:
-            pick = ', '.join(["`{}`".format(f.strip().strip('`')) for f in pick.split(',') if f.strip()])
+        if pick != "*" and pick.find(",") != -1:
+            pick = ", ".join(
+                [
+                    "`{}`".format(f.strip().strip("`"))
+                    for f in pick.split(",")
+                    if f.strip()
+                ]
+            )
         _sql = "select {} from {} {}"
         _where, args = make_where(conds)
         tail = make_tail(_where, limit)
@@ -65,15 +71,13 @@ class Table(MySQL):
     def exists(self, **conds) -> bool:
         """检查数据是否存在"""
         _where, args = make_where(conds)
-        sql = 'select 1 from {} where {} limit 1'.format(self.name, _where)
+        sql = "select 1 from {} where {} limit 1".format(self.name, _where)
         return self.exe_sql(sql, args=args).affect == 1
 
     def random(self, limit=1):
         """随机返回一条或多条数据"""
-        sql = 'select * from {} where id >= (rand() * (select max(id) from {})) limit {}'.format(
-            self.name,
-            self.name,
-            limit
+        sql = "select * from {} where id >= (rand() * (select max(id) from {})) limit {}".format(
+            self.name, self.name, limit
         )
         r = self.exe_sql(sql, query_all=True)
         result: list[dict] = r.result
@@ -94,11 +98,11 @@ class Table(MySQL):
         temp = []
         args = []
         for k, v in item.items():
-            temp.append('{}=%s'.format(k))
+            temp.append("{}=%s".format(k))
             args.append(v)
-        s = ', '.join(temp)
+        s = ", ".join(temp)
         args.append(dv)
-        sql = 'update {} set {} where {}=%s'.format(self.name, s, depend)
+        sql = "update {} set {} where {}=%s".format(self.name, s, depend)
         r = self.exe_sql(sql, args=args)
         return r.affect
 
@@ -117,8 +121,8 @@ class Table(MySQL):
 
         ks = list(items[0].keys())
         ks.remove(depend)
-        mid = ', '.join(['{}=%s'.format(k) for k in ks])
-        sql = 'update {} set {} where {}=%s'.format(self.name, mid, depend)
+        mid = ", ".join(["{}=%s".format(k) for k in ks])
+        sql = "update {} set {} where {}=%s".format(self.name, mid, depend)
         args = []
         for one in items:
             vs = [one[k] for k in ks]
@@ -134,45 +138,51 @@ class Table(MySQL):
         keys = list(items[0].keys())
         keys.remove(depend)
 
-        head = 'update {} set'.format(self.name)
+        head = "update {} set".format(self.name)
 
-        mid = ''
+        mid = ""
         args = []
         for key in keys:
-            mid += '\t{} = case {}\n\t'.format(key, depend)
+            mid += "\t{} = case {}\n\t".format(key, depend)
             for data in items:
-                mid += 'when %s then %s '
+                mid += "when %s then %s "
                 args.append(data[depend])
                 args.append(data[key])
             else:
-                mid += 'end,\n'
+                mid += "end,\n"
         mid = mid[:-2]
 
         values = ["'{}'".format(data[depend]) for data in items]
-        tail = 'where {} in ({})'.format(depend, ', '.join(values))
+        tail = "where {} in ({})".format(depend, ", ".join(values))
 
-        sql = '\n'.join([head, mid, tail])
+        sql = "\n".join([head, mid, tail])
         r = self.exe_sql(sql, args=args)
         return r.affect
 
     def get_min(self, field: str):
         """获取字段的最小值"""
-        sql = 'select min({}) from {}'.format(field, self.name)
+        sql = "select min({}) from {}".format(field, self.name)
         min_value = self.exe_sql(sql, query_all=False, to_dict=False).result[0]
         return min_value
 
     def get_max(self, field: str):
         """获取字段的最大值"""
-        sql = 'select max({}) from {}'.format(field, self.name)
+        sql = "select max({}) from {}".format(field, self.name)
         max_value = self.exe_sql(sql, query_all=False, to_dict=False).result[0]
         return max_value
 
     def scan(
-            self, sort_field='id', pick='*',
-            start: int = None, end: int = None,
-            dealer=None, add_cond=None,
-            once=1000, rest=0.05,
-            max_query_times=None, log=True
+        self,
+        sort_field="id",
+        pick="*",
+        start: int = None,
+        end: int = None,
+        dealer=None,
+        add_cond=None,
+        once=1000,
+        rest=0.05,
+        max_query_times=None,
+        log=True,
     ):
         """
         扫描数据，每一批数据可以交给回调函数处理
@@ -192,32 +202,50 @@ class Table(MySQL):
 
         times = 0  # 查询了多少次
         dealer = dealer or print_lines  # 具体的回调函数
-        start, end = start or self.get_min(sort_field), end or self.get_max(sort_field)  # 查询区间
+        start, end = start or self.get_min(sort_field), end or self.get_max(
+            sort_field
+        )  # 查询区间
 
         first_query = True  # 第一次查询
         while True:
-            symbol, cond = '>=' if first_query else '>', '' if add_cond is None else 'and ' + add_cond
-            sql = '''
+            symbol, cond = ">=" if first_query else ">", (
+                "" if add_cond is None else "and " + add_cond
+            )
+            sql = """
                 select {} from {}
                 where {} {} {} and {} <= {} {}
                 order by {}
                 limit {}
-            '''.format(
-                pick, self.name,
-                sort_field, symbol, start, sort_field, end, cond,
+            """.format(
+                pick,
+                self.name,
                 sort_field,
-                once
+                symbol,
+                start,
+                sort_field,
+                end,
+                cond,
+                sort_field,
+                once,
             )
 
             result: list = self.exe_sql(sql, query_all=True).result
             if not result:
-                self.panic(sql, '查询为空')
+                self.panic(sql, "查询为空")
                 return
 
             # 输出查询日志
             if log is True:
-                params = sort_field, symbol, start, once, len(result), result[0][sort_field], result[-1][sort_field]
-                logger.info('{}{}{}  期望{}得到{}  具体{}到{}'.format(*params))
+                params = (
+                    sort_field,
+                    symbol,
+                    start,
+                    once,
+                    len(result),
+                    result[0][sort_field],
+                    result[-1][sort_field],
+                )
+                logger.info("{}{}{}  期望{}得到{}  具体{}到{}".format(*params))
 
             # 查询出来的数据交给回调函数处理
             if len(result) == once:
@@ -236,7 +264,9 @@ class Table(MySQL):
             first_query = False
             time.sleep(rest)  # 每一轮查询之间的间隔
 
-    def insert_data(self, data: dict | list, update: str = None, unique: str = None) -> int:
+    def insert_data(
+        self, data: dict | list, update: str = None, unique: str = None
+    ) -> int:
         """
         插入数据，dict插入一条，list插入多条
 

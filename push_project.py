@@ -1,7 +1,7 @@
 import os
 import sys
 
-msg = sys.argv[1] if len(sys.argv) == 2 else "add type tips"
+msg = sys.argv[1] if len(sys.argv) == 2 else "vscode format code"
 
 cmd1 = "git add ."
 cmd2 = 'git commit -m "{}"'.format(msg)

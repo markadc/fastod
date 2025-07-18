@@ -12,9 +12,10 @@ from fastod.tools import getfv
 class Response:
     """执行SQL的响应"""
 
-    def __init__(self, cursor: Cursor | DictCursor = None, mode: bool = None, e: Exception = None):
+    def __init__(
+        self, cursor: Cursor | DictCursor = None, mode: bool = None, e: Exception = None
+    ):
         """
-
         Args:
             cursor: 默认游标或者字典游标
             mode: 决定result的值，为True则调用fetchall、为False调用fetchone、为None则不调用
@@ -29,7 +30,9 @@ class Response:
         assert cursor, "Cursor is None"
         self.ok = True
         self.affect: int = cursor.rowcount
-        self.result: list | dict | tuple = None if mode is None else cursor.fetchall() if mode else cursor.fetchone()
+        self.result: list | dict | tuple = (
+            None if mode is None else cursor.fetchall() if mode else cursor.fetchone()
+        )
         self.error = None
 
     def __str__(self):
@@ -46,7 +49,7 @@ class SQL:
         self._select = None
         self._where_conds = []
         self._limit = None
-        self._sql = ''
+        self._sql = ""
 
     def select(self, fileds="*"):
         self._select = fileds
@@ -96,10 +99,10 @@ class SQL:
     def build(self) -> str:
         """返回具体的SQL语句"""
         _select = self._select if self._select is not None else "*"
-        _where = ''
+        _where = ""
         if self._where_conds:
             _where = " WHERE " + " AND ".join(self._where_conds)
-        _limit = ''
+        _limit = ""
         if self._limit:
             _limit = f" LIMIT {self._limit}"
         self._sql = f"SELECT {_select} FROM {self.table_name}{_where}{_limit}"
@@ -107,7 +110,9 @@ class SQL:
 
 
 class MySQL:
-    def __init__(self, host=None, port=None, username=None, password=None, db=None, **kwargs):
+    def __init__(
+        self, host=None, port=None, username=None, password=None, db=None, **kwargs
+    ):
         """
         连接MySQL数据库
 
@@ -120,16 +125,16 @@ class MySQL:
             **kwargs: 跟PooledDB参数保持一致
         """
         cfg = dict(
-            host=host or 'localhost',
+            host=host or "localhost",
             port=port or 3306,
             user=username,
             password=password,
             db=db,
             mincached=1,
             maxcached=20,
-            charset='utf8mb4',
+            charset="utf8mb4",
             maxconnections=10,
-            blocking=True
+            blocking=True,
         )
         cfg.update(kwargs)
         self._cfg = cfg
@@ -147,12 +152,13 @@ class MySQL:
             port=result.port,
             username=result.username,
             password=result.password,
-            db=result.path.strip('/')
+            db=result.path.strip("/"),
         )
 
     def __getitem__(self, name: str):
         assert name in self.get_table_names(), f"table <{name}> is not exists"
         from fastod.core.table import Table
+
         return Table(name, self._pool, self._cfg)
 
     def pick_table(self, name: str):
@@ -162,12 +168,14 @@ class MySQL:
     @staticmethod
     def panic(sql, msg):
         """错误日志"""
-        sql = re.sub("\s+", ' ', sql).strip()
+        sql = re.sub("\s+", " ", sql).strip()
         logger.error(
             """
             sql     {}
             msg     {}
-            """.format(sql, msg)
+            """.format(
+                sql, msg
+            )
         )
 
     def open_connect(self, dict_cursor=False):
@@ -183,12 +191,14 @@ class MySQL:
         if con:
             con.close()
 
-    def exe_sql(self, sql: str, args=None, query_all=None, to_dict=True, allow_failed=True) -> Response:
+    def exe_sql(
+        self, sql: str, args=None, query_all=None, to_dict=True, allow_failed=True
+    ) -> Response:
         """执行SQL"""
         cur, con = None, None
         try:
             cur, con = self.open_connect(to_dict)
-            sql = re.sub("\s+", ' ', sql).strip()
+            sql = re.sub("\s+", " ", sql).strip()
             args = args or None
             cur.execute(sql.strip(), args=args)
             con.commit()
@@ -206,7 +216,7 @@ class MySQL:
         cur, con = None, None
         try:
             cur, con = self.open_connect()
-            sql = re.sub("\s+", ' ', sql).strip()
+            sql = re.sub("\s+", " ", sql).strip()
             args = args or None
             line = cur.executemany(sql, args=args)
             con.commit()
@@ -217,7 +227,9 @@ class MySQL:
         finally:
             self.close_connect(cur, con)
 
-    def _add_one(self, table: str, item: dict, update: str = None, unique: str = None) -> int:
+    def _add_one(
+        self, table: str, item: dict, update: str = None, unique: str = None
+    ) -> int:
         """
         添加数据
 
@@ -231,15 +243,21 @@ class MySQL:
             已添加的行数
         """
         fields, values = getfv(item)
-        new = '' if not (update or unique) else 'ON DUPLICATE KEY UPDATE {}'.format(
-            update or '{}={}'.format(unique, unique)
+        new = (
+            ""
+            if not (update or unique)
+            else "ON DUPLICATE KEY UPDATE {}".format(
+                update or "{}={}".format(unique, unique)
+            )
         )
-        sql = 'insert into {}({}) value({}) {}'.format(table, fields, values, new)
+        sql = "insert into {}({}) value({}) {}".format(table, fields, values, new)
         args = tuple(item.values())
         r = self.exe_sql(sql, args=args)
         return r.affect
 
-    def _add_many(self, table: str, items: list, update: str = None, unique: str = None) -> int:
+    def _add_many(
+        self, table: str, items: list, update: str = None, unique: str = None
+    ) -> int:
         """
         批量添加数据
 
@@ -253,24 +271,28 @@ class MySQL:
             已添加的行数
         """
         fields, values = getfv(items)
-        new = '' if not (update or unique) else 'ON DUPLICATE KEY UPDATE {}'.format(
-            update or '{}={}'.format(unique, unique)
+        new = (
+            ""
+            if not (update or unique)
+            else "ON DUPLICATE KEY UPDATE {}".format(
+                update or "{}={}".format(unique, unique)
+            )
         )
-        sql = 'insert into {}({}) value({}) {}'.format(table, fields, values, new)
+        sql = "insert into {}({}) value({}) {}".format(table, fields, values, new)
         args = [tuple(item.values()) for item in items]
         affect = self.exem_sql(sql, args=args)
         return affect
 
     def get_table_names(self) -> list:
         """获取当前数据库的所有表名称"""
-        sql = 'show tables'
+        sql = "show tables"
         r = self.exe_sql(sql, to_dict=False, query_all=True)
         names = [v[0] for v in r.result]
         return names
 
     def remove_table(self, name: str) -> bool:
         """删除表"""
-        sql = 'DROP TABLE {}'.format(name)
+        sql = "DROP TABLE {}".format(name)
         return self.exe_sql(sql).ok
 
     def gen_test_table(self, name: str, once=1000, total=10000):
@@ -283,7 +305,7 @@ class MySQL:
 
         def create_table():
             """新建测试表"""
-            sql = '''
+            sql = """
                 create table {}
                 (
                     id          int NOT NULL    AUTO_INCREMENT,
@@ -300,32 +322,34 @@ class MySQL:
                     primary key (id)
                 ) 
                 ENGINE=InnoDB    DEFAULT CHARSET=utf8mb4;
-            '''.format(name)
+            """.format(
+                name
+            )
             return self.exe_sql(sql).ok
 
         def make_one():
             """制造一条数据"""
             one = {
-                'name': faker.name(),
-                'gender': random.choice(['男', '女']),
-                'age': faker.random.randint(18, 60),
-                'phone': faker.phone_number(),
-                'ssn': faker.ssn(),
-                'job': faker.job(),
-                'salary': faker.random_number(digits=4),
-                'company': faker.company(),
-                'address': faker.address(),
-                'mark': faker.random_letter()
+                "name": faker.name(),
+                "gender": random.choice(["男", "女"]),
+                "age": faker.random.randint(18, 60),
+                "phone": faker.phone_number(),
+                "ssn": faker.ssn(),
+                "job": faker.job(),
+                "salary": faker.random_number(digits=4),
+                "company": faker.company(),
+                "address": faker.address(),
+                "mark": faker.random_letter(),
             }
             return one
 
         def todb(target, count):
             """数据进入MySQL"""
             items = [make_one() for _ in range(count)]
-            line = self._add_many(target, items, unique='id')
+            line = self._add_many(target, items, unique="id")
             nonlocal n
             n += line
-            logger.success('MySQL，插入{}，累计{}'.format(line, n))
+            logger.success("MySQL，插入{}，累计{}".format(line, n))
 
         if not create_table():
             raise Exception("表创建失败，可能表已存在")
@@ -340,6 +364,6 @@ class MySQL:
         if other := total % once:
             todb(name, other)
 
-        logger.success('新表，{}/{}'.format(self._cfg['db'], name))
+        logger.success("新表，{}/{}".format(self._cfg["db"], name))
 
         return self.pick_table(name)
