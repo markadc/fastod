@@ -9,8 +9,8 @@ from pymysql.cursors import DictCursor, Cursor
 from fastod.tools import getfv
 
 
-class Response:
-    """执行SQL的响应"""
+class Feedback:
+    """执行SQL的反馈"""
 
     def __init__(
         self, cursor: Cursor | DictCursor = None, mode: bool = None, e: Exception = None
@@ -41,7 +41,7 @@ class Response:
         return show
 
 
-class SQL:
+class GenSQL:
     """快速生成SQL语句"""
 
     def __init__(self, table_name: str):
@@ -49,7 +49,6 @@ class SQL:
         self._select = None
         self._where_conds = []
         self._limit = None
-        self._sql = ""
 
     def select(self, fileds="*"):
         self._select = fileds
@@ -99,14 +98,13 @@ class SQL:
     def build(self) -> str:
         """返回具体的SQL语句"""
         _select = self._select if self._select is not None else "*"
-        _where = ""
-        if self._where_conds:
-            _where = " WHERE " + " AND ".join(self._where_conds)
-        _limit = ""
-        if self._limit:
-            _limit = f" LIMIT {self._limit}"
-        self._sql = f"SELECT {_select} FROM {self.table_name}{_where}{_limit}"
-        return self._sql
+        _where = " WHERE " + " AND ".join(self._where_conds) if self._where_conds else ""
+        _limit = f" LIMIT {self._limit}" if self._limit else ""
+        sql = f"SELECT {_select} FROM {self.table_name}{_where}{_limit}"
+        return sql
+
+    def to_string(self) -> str:
+        return self.build()
 
 
 class MySQL:
@@ -193,7 +191,7 @@ class MySQL:
 
     def exe_sql(
         self, sql: str, args=None, query_all=None, to_dict=True, allow_failed=True
-    ) -> Response:
+    ) -> Feedback:
         """执行SQL"""
         cur, con = None, None
         try:
@@ -202,12 +200,12 @@ class MySQL:
             args = args or None
             cur.execute(sql.strip(), args=args)
             con.commit()
-            return Response(cursor=cur, mode=query_all)
+            return Feedback(cursor=cur, mode=query_all)
         except Exception as e:
             if allow_failed is False:
                 raise e
             self.panic(sql, e)
-            return Response(e=e)
+            return Feedback(e=e)
         finally:
             self.close_connect(cur, con)
 
